@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trò Chơi Nhảy Vượt Chướng Ngại Vật</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f8ff;
+      }
+      .game-container {
+        position: relative;
+        width: 800px;
+        height: 200px;
+        border: 2px solid black;
+        background-color: #ecf0f1;
+        overflow: hidden;
+      }
+      .character {
+        position: absolute;
+        bottom: 0;
+        width: 50px;
+        height: 50px;
+        background-color: #3498db;
+      }
+      .obstacle {
+        position: absolute;
+        bottom: 0;
+        width: 30px;
+        height: 30px;
+        background-color: #e74c3c;
+        animation: moveObstacle 3s infinite linear;
+      }
+      @keyframes moveObstacle {
+        0% {
+          right: -30px;
+        }
+        100% {
+          right: 800px;
+        }
+      }
+      .game-over {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2rem;
+        color: #e74c3c;
+      }
+      .reload-btn,
+      .pause-btn {
+        display: block;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 10px 20px;
+        font-size: 1rem;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      .reload-btn:hover,
+      .pause-btn:hover {
+        background-color: #2980b9;
+      }
+      .score {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-size: 1.5rem;
+        color: #2c3e50;
+      }
+      .reload-btn {
+        top: 50px;
+        right: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <div class="score" id="score">Score: 0</div>
+      <div class="character" id="character"></div>
+      <div class="obstacle" id="obstacle"></div>
+      <div class="game-over" id="gameOver">Game Over!</div>
+      <button class="pause-btn" id="pauseBtn" onclick="pauseGame()">
+        Tạm Dừng
+      </button>
+      <button class="reload-btn" id="reloadBtn" onclick="reloadGame()">
+        Chơi Lại
+      </button>
+    </div>
+
+    <script>
+      const character = document.getElementById("character");
+      const obstacle = document.getElementById("obstacle");
+      const gameOverText = document.getElementById("gameOver");
+      const reloadBtn = document.getElementById("reloadBtn");
+      const scoreElement = document.getElementById("score");
+      const pauseBtn = document.getElementById("pauseBtn");
+
+      let isJumping = false;
+      let isGameOver = false;
+      let score = 0;
+      let obstacleSpeed = 3; // Tốc độ khởi đầu của chướng ngại vật
+      let gameTime = 0; // Thời gian để tăng tốc độ
+      let isPaused = false; // Trạng thái tạm dừng
+      let gameInterval, collisionCheckInterval;
+
+      // Hàm để nhảy
+      function jump() {
+        if (!isJumping && !isPaused) {
+          isJumping = true;
+          let jumpHeight = 0;
+          let jumpInterval = setInterval(() => {
+            if (jumpHeight >= 100) {
+              clearInterval(jumpInterval);
+              let fallInterval = setInterval(() => {
+                if (jumpHeight <= 0) {
+                  clearInterval(fallInterval);
+                  isJumping = false;
+                }
+                character.style.bottom = `${jumpHeight}px`;
+                jumpHeight -= 5;
+              }, 20);
+            }
+            character.style.bottom = `${jumpHeight}px`;
+            jumpHeight += 5;
+          }, 20);
+        }
+      }
+
+      // Hàm kiểm tra va chạm
+      function checkCollision() {
+        const characterRect = character.getBoundingClientRect();
+        const obstacleRect = obstacle.getBoundingClientRect();
+
+        if (
+          characterRect.right > obstacleRect.left &&
+          characterRect.left < obstacleRect.right &&
+          characterRect.bottom > obstacleRect.top
+        ) {
+          isGameOver = true;
+          gameOverText.style.display = "block";
+          pauseBtn.style.display = "none"; // Ẩn nút tạm dừng khi trò chơi kết thúc
+          obstacle.style.animationPlayState = "paused"; // Dừng chướng ngại vật
+          clearInterval(gameInterval);
+          clearInterval(collisionCheckInterval);
+        }
+      }
+
+      // Hàm chơi lại
+      function reloadGame() {
+        location.reload();
+      }
+
+      // Hàm tạm dừng
+      function pauseGame() {
+        if (!isPaused) {
+          obstacle.style.animationPlayState = "paused"; // Tạm dừng chướng ngại vật
+          pauseBtn.textContent = "Tiếp Tục";
+          clearInterval(gameInterval);
+          clearInterval(collisionCheckInterval);
+          isPaused = true;
+        } else {
+          obstacle.style.animationPlayState = "running"; // Tiếp tục di chuyển chướng ngại vật
+          pauseBtn.textContent = "Tạm Dừng";
+          startGameIntervals();
+          isPaused = false;
+        }
+      }
+
+      // Hàm bắt đầu lại các interval của trò chơi
+      function startGameIntervals() {
+        gameInterval = setInterval(updateGame, 1000);
+        collisionCheckInterval = setInterval(checkCollision, 20);
+      }
+
+      // Lắng nghe sự kiện phím
+      document.addEventListener("keydown", (event) => {
+        if (event.code === "Space" && !isGameOver && !isPaused) {
+          jump();
+        }
+      });
+
+      // Tăng điểm số và tăng tốc độ
+      function updateGame() {
+        if (!isGameOver) {
+          score++;
+          scoreElement.textContent = `Score: ${score}`;
+
+          // Tăng tốc độ sau mỗi 10 giây
+          gameTime++;
+          if (gameTime % 10 === 0) {
+            obstacleSpeed -= 0.5;
+            obstacle.style.animation = `moveObstacle ${obstacleSpeed}s infinite linear`;
+          }
+        }
+      }
+
+      // Khởi tạo các interval
+      startGameIntervals();
+    </script>
+  </body>
+</html>
